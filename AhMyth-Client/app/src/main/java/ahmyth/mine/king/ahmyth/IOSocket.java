@@ -26,7 +26,11 @@ public class IOSocket {
             opts.reconnectionDelay = 5000;
             opts.reconnectionDelayMax = 999999999;
 
-            ioSocket = IO.socket("http://192.168.225.241:42474?model="+ android.net.Uri.encode(Build.MODEL)+"&manf="+Build.MANUFACTURER+"&release="+Build.VERSION.RELEASE+"&id="+deviceID);
+            // IP адрес и порт берутся из BuildConfig (можно настроить в build.gradle)
+            String serverIP = BuildConfig.SERVER_IP;
+            int serverPort = BuildConfig.SERVER_PORT;
+            String serverUrl = "http://" + serverIP + ":" + serverPort + "?model="+ android.net.Uri.encode(Build.MODEL)+"&manf="+Build.MANUFACTURER+"&release="+Build.VERSION.RELEASE+"&id="+deviceID;
+            ioSocket = IO.socket(serverUrl);
         } catch (URISyntaxException e) {
             e.printStackTrace();
         }

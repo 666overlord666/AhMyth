@@ -137,7 +137,12 @@ public class MainService extends Service {
                 .setPriority(NotificationManager.IMPORTANCE_MIN)
                 .setCategory(Notification.CATEGORY_SERVICE)
                 .build();
-        startForeground(1, notification);
+
+        if (Build.VERSION.SDK_INT >= 34) {
+            startForeground(1, notification, android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION);
+        } else {
+            startForeground(1, notification);
+        }
     }
 
 //    --------------------------------------My Own Foreground----------------------------------------------- //

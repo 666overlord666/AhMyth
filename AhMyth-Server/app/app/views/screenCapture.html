@@ -1,0 +1,21 @@
+<div class="ui {{load}} basic segment h100 " style="overflow-y:auto;overflow-x: auto;white-space:nowrap; height: 400px;">
+    <div class="ui grid center aligned h100">
+        <div class="row h20">
+            <div class="sixteen wide column">
+                <button class="ui labeled icon black button" ng-click="capture()" ng-disabled="load === 'loading'">
+                    <i class="desktop icon"></i>Capture Screen
+                </button>
+            </div>
+        </div>
+        <div class="row h80">
+            <div class="sixteen wide column h100" style="display: flex; justify-content: center;">
+                <div class="ui h100 image ">
+                    <a class="ui red ribbon label" ng-show="isSaveShown" ng-click="saveScreenshot()">
+                        <i class="save icon"></i> Save
+                    </a>
+                    <img style="height: 100%; max-width: 100%; object-fit: contain;" src="./assets/img/imageHolder.png" ng-src="{{imgUrl}}"></img>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

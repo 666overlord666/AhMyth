@@ -28,6 +28,7 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION"/>
     <uses-permission android:name="android.permission.BACKGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.ACCESS_SUPERUSER"/>
     
@@ -53,11 +54,20 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".ScreenCaptureActivity"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:launchMode="singleTask" />
+
         <service
             android:name=".MainService"
             android:enabled="true"
             android:exported="false"
-            />
+            android:foregroundServiceType="mediaProjection">
+        </service>
 
 
 

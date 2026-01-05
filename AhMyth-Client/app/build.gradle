@@ -14,6 +14,8 @@ android {
         lintOptions {
             abortOnError false
         }
+        buildConfigField "String", "SERVER_IP", project.hasProperty('serverIP') ? "\"${project.serverIP}\"" : "\"192.168.225.241\""
+        buildConfigField "int", "SERVER_PORT", project.hasProperty('serverPort') ? project.serverPort : "42474"
         buildTypes {
             release {
                 minifyEnabled true
