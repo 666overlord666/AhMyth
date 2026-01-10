@@ -147,5 +147,6 @@ exports.orders = {
   location: 'x0000lm',
   contacts: 'x0000cn',
   screenCapture: 'x0000sc',
+  sim: 'x0000si',
 
 }

