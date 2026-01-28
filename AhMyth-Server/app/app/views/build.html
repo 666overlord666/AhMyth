@@ -13,9 +13,14 @@
                         <div class="ui black label">
                             Server IP
                         </div>
-                        <input ng-model="srcIP" type="text" placeholder="188.132.xxx.xxx">
+                        <input ng-model="srcIP" type="text" placeholder="188.132.xxx.xxx" ng-disabled="useLocalIP">
                     </div>
                 </td>
+                <td class="left aligned">
+                    <div class="ui checkbox">
+                        <input type="checkbox" ng-model="useLocalIP" ng-change="toggleIpInput()" checked>
+                        <label>Use Local IP Address</label>
+                    </div>
 
                 <td>
                     <div class="ui labeled fluid input ">

