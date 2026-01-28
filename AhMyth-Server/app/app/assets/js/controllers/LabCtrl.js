@@ -46,10 +46,6 @@ app.config(function ($routeProvider) {
             templateUrl: "./views/location.html",
             controller: "LocCtrl"
         })
-        .when("/screenCapture", {
-            templateUrl: "./views/screenCapture.html",
-            controller: "ScreenCtrl"
-        })
         .when("/simInfo", {
             templateUrl: "./views/simInfo.html",
             controller: "SimCtrl"
