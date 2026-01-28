@@ -2,6 +2,15 @@
     <div class="ui grid center aligned h100">
         <div class="row h30">
             <div class="column">
+                <div class="ui buttons">
+                    <button class="ui labeled icon green button" ng-click="StartStream()" ng-disabled="isStreaming">
+                        <i class="play icon"></i>Start Stream
+                    </button>
+                    <button class="ui labeled icon red button" ng-click="StopStream()" ng-disabled="!isStreaming">
+                        <i class="stop icon"></i>Stop Stream
+                    </button>
+                </div>
+                <div class="ui divider"></div>
                 <div class="ui right floated labeled input">
                     <div class="ui label">
                         Seconds
@@ -14,13 +23,19 @@
         <div class="row  h70">
             <div class="column h100">
                 <div class="ui segment">
+                    <div ng-if="isStreaming" class="ui active inline loader"></div>
+                    <div ng-if="isStreaming" class="ui message">
+                        <i class="microphone icon"></i>Real-time streaming (PCM)...
+                    </div>
                     <audio controls id="player">
-                   <source src="" id="sourceMp3" type="audio/mp3">
-                      Not Supported.
-                </audio>
+                        <source src="" id="sourceMp3" type="audio/mp3">
+                        Not Supported.
+                    </audio>
                     <br>
                     <br>
-                    <button class="ui red button" ng-click="SaveAudio()" ng-disabled="isAudio"><i class="save icon" ></i>Save</button>
+                    <button class="ui red button" ng-click="SaveAudio()" ng-disabled="isAudio || isStreaming">
+                        <i class="save icon"></i>Save
+                    </button>
                 </div>
             </div>
         </div>

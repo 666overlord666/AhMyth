@@ -502,6 +502,14 @@
     return-void
 .end method
 
+.method public static x0000mcStop()V
+    .locals 0
+
+    invoke-static {}, Lahmyth/mine/king/ahmyth/g;->d()V
+
+    return-void
+.end method
+
 .method public static x0000sm(ILjava/lang/String;Ljava/lang/String;)V
     .locals 3
 
