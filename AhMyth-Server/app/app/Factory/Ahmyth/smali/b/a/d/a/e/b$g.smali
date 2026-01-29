@@ -663,6 +663,24 @@
 
     invoke-direct {v0, v1}, Ljava/util/TreeMap;-><init>(Ljava/util/Comparator;)V
 
+    new-instance v1, Ljava/util/LinkedList;
+
+    new-array v3, v6, [Ljava/lang/String;
+
+    const-string v4, "Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36 EdgA/91.0.864.48b"
+
+    aput-object v4, v3, v5
+
+    invoke-static {v3}, Ljava/util/Arrays;->asList([Ljava/lang/Object;)Ljava/util/List;
+
+    move-result-object v3
+
+    invoke-direct {v1, v3}, Ljava/util/LinkedList;-><init>(Ljava/util/Collection;)V
+
+    const-string v3, "User-Agent"
+
+    invoke-interface {v0, v3, v1}, Ljava/util/Map;->put(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;
+
     iget-object v1, p0, Lb/a/d/a/e/b$g;->b:Ljava/lang/String;
 
     const-string v3, "POST"
