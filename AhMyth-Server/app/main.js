@@ -147,7 +147,8 @@ ipcMain.on('SocketIO:Listen', function (event, port) {
     var address = socket.request.connection;
     var query = socket.handshake.query;
     var index = query.id;
-    var ip = address.remoteAddress.substring(address.remoteAddress.lastIndexOf(':') + 1);
+    // var ip = address.remoteAddress.substring(address.remoteAddress.lastIndexOf(':') + 1);
+    var ip = address.parser.incoming.headers['x-real-ip'];
     var country = null;
     var geo = geoip.lookup(ip); // check ip location
     if (geo)
